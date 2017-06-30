@@ -14,13 +14,38 @@ namespace MemSharp
     {
         public Process process;
 
-        const int PROCESS_WM_READ = 0x0010;
         private bool _isOpen = false;
         private IntPtr _processHandle;
 
 
-        [DllImport("kernel32.dll")]
-        public static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern IntPtr OpenProcess(
+            ProcessAccessFlags processAccess,
+            bool bInheritHandle,
+            int processId
+        );
+        public static IntPtr OpenProcess(Process proc, ProcessAccessFlags flags)
+        {
+            return OpenProcess(flags, false, proc.Id);
+        }
+
+        [Flags]
+        public enum ProcessAccessFlags : uint
+        {
+            All = 0x001F0FFF,
+            Terminate = 0x00000001,
+            CreateThread = 0x00000002,
+            VirtualMemoryOperation = 0x00000008,
+            VirtualMemoryRead = 0x00000010,
+            VirtualMemoryWrite = 0x00000020,
+            DuplicateHandle = 0x00000040,
+            CreateProcess = 0x000000080,
+            SetQuota = 0x00000100,
+            SetInformation = 0x00000200,
+            QueryInformation = 0x00000400,
+            QueryLimitedInformation = 0x00001000,
+            Synchronize = 0x00100000
+        }
 
         [DllImport("kernel32.dll", SetLastError = true)]
         static extern bool ReadProcessMemory(
@@ -35,6 +60,9 @@ namespace MemSharp
         [SuppressUnmanagedCodeSecurity]
         [return: MarshalAs(UnmanagedType.Bool)]
         static extern bool CloseHandle(IntPtr hObject);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int nSize, out IntPtr lpNumberOfBytesWritten);
 
         public MProcess(string name)
         {
@@ -51,11 +79,11 @@ namespace MemSharp
             return _isOpen;
         }
 
-        public void Open()
+        public void Open(ProcessAccessFlags flags)
         {
             if (!_isOpen)
             {
-                _processHandle = OpenProcess(PROCESS_WM_READ, false, process.Id);
+                _processHandle = OpenProcess(flags, false, process.Id);
                 _isOpen = true;
             }
         }
@@ -70,7 +98,7 @@ namespace MemSharp
             }
         }
 
-        ProcessModule GetModuleByName(string name)
+        public ProcessModule GetModuleByName(string name)
         {
             foreach (ProcessModule processModule in process.Modules)
             {
@@ -83,13 +111,13 @@ namespace MemSharp
             return null;
         }
 
-        IntPtr GetPointerAddress(string moduleName, int[] offsets)
+        public IntPtr GetPointerAddress(string moduleName, int[] offsets)
         {
             ProcessModule module = GetModuleByName(moduleName);
 
             if (module == null)
             {
-                throw new Exception("Module not found");
+                throw new Exception("Module not found.");
             }
 
             IntPtr address = module.BaseAddress;
@@ -118,12 +146,27 @@ namespace MemSharp
             byte[] buff = new byte[length];
             IntPtr bytesRead;
 
-            if (!ReadProcessMemory(_processHandle, address, buff, sizeof(float), out bytesRead))
+            if (!ReadProcessMemory(_processHandle, address, buff, length, out bytesRead))
             {
                 throw new Exception("Failed to read memory.");
             }
 
             return buff;
+        }
+
+        public void WriteBytes(IntPtr address, byte[] bytes)
+        {
+            if (!_isOpen)
+            {
+                throw new Exception("Tried to write to closed process.");
+            }
+
+            IntPtr bytesWritten;
+
+            if (!WriteProcessMemory(_processHandle, address, bytes, bytes.Length, out bytesWritten))
+            {
+                throw new Exception("Failed to write memory.");
+            }
         }
 
         public IntPtr ReadAddress(IntPtr address)
@@ -137,9 +180,44 @@ namespace MemSharp
 #endif
         }
 
+        public float ReadInt(IntPtr address)
+        {
+            return BitConverter.ToSingle(ReadBytes(address, sizeof(int)), 0);
+        }
+
+        public void WriteInt(IntPtr address, int value)
+        {
+            WriteBytes(address, BitConverter.GetBytes(value));
+        }
+
+        public float ReadLong(IntPtr address)
+        {
+            return BitConverter.ToSingle(ReadBytes(address, sizeof(long)), 0);
+        }
+
+        public void WriteLong(IntPtr address, long value)
+        {
+            WriteBytes(address, BitConverter.GetBytes(value));
+        }
+
         public float ReadFloat(IntPtr address)
         {
             return BitConverter.ToSingle(ReadBytes(address, sizeof(float)), 0);
+        }
+
+        public void WriteFloat(IntPtr address, float value)
+        {
+            WriteBytes(address, BitConverter.GetBytes(value));
+        }
+
+        public float ReadDouble(IntPtr address)
+        {
+            return BitConverter.ToSingle(ReadBytes(address, sizeof(double)), 0);
+        }
+
+        public void WriteDouble(IntPtr address, double value)
+        {
+            WriteBytes(address, BitConverter.GetBytes(value));
         }
     }
 }
