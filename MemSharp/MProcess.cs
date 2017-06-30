@@ -70,15 +70,52 @@ namespace MemSharp
             }
         }
 
-        public float ReadFloat(IntPtr address)
+        ProcessModule GetModuleByName(string name)
+        {
+            foreach (ProcessModule processModule in process.Modules)
+            {
+                if (processModule.ModuleName.Equals(name))
+                {
+                    return processModule;
+                }
+            }
+
+            return null;
+        }
+
+        IntPtr GetPointerAddress(string moduleName, int[] offsets)
+        {
+            ProcessModule module = GetModuleByName(moduleName);
+
+            if (module == null)
+            {
+                throw new Exception("Module not found");
+            }
+
+            IntPtr address = module.BaseAddress;
+
+            foreach (var offset in offsets)
+            {
+                address += offset;
+
+                // don't read the last one, we are at the address
+                if (!offset.Equals(offsets.Last()))
+                {
+                    address = ReadAddress(address);
+                }
+            }
+
+            return address;
+        }
+
+        public byte[] ReadBytes(IntPtr address, int length)
         {
             if (!_isOpen)
             {
                 throw new Exception("Tried to read from closed process.");
             }
 
-            float result = 0.0f;
-            byte[] buff = new byte[Marshal.SizeOf(result)];
+            byte[] buff = new byte[length];
             IntPtr bytesRead;
 
             if (!ReadProcessMemory(_processHandle, address, buff, sizeof(float), out bytesRead))
@@ -86,9 +123,23 @@ namespace MemSharp
                 throw new Exception("Failed to read memory.");
             }
 
-            result = BitConverter.ToSingle(buff, 0);
+            return buff;
+        }
 
-            return result;
+        public IntPtr ReadAddress(IntPtr address)
+        {
+            byte[] buff = ReadBytes(address, IntPtr.Size);
+
+#if WIN64
+            return (IntPtr)BitConverter.ToInt64(buff, 0);
+#else
+            return (IntPtr)BitConverter.ToInt32(buff, 0);
+#endif
+        }
+
+        public float ReadFloat(IntPtr address)
+        {
+            return BitConverter.ToSingle(ReadBytes(address, sizeof(float)), 0);
         }
     }
 }
