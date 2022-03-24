@@ -180,9 +180,9 @@ namespace MemSharp
 #endif
         }
 
-        public float ReadInt(IntPtr address)
+        public int ReadInt(IntPtr address)
         {
-            return BitConverter.ToSingle(ReadBytes(address, sizeof(int)), 0);
+            return BitConverter.ToInt32(ReadBytes(address, sizeof(int)), 0);
         }
 
         public void WriteInt(IntPtr address, int value)
@@ -190,9 +190,9 @@ namespace MemSharp
             WriteBytes(address, BitConverter.GetBytes(value));
         }
 
-        public float ReadLong(IntPtr address)
+        public long ReadLong(IntPtr address)
         {
-            return BitConverter.ToSingle(ReadBytes(address, sizeof(long)), 0);
+            return BitConverter.ToInt64(ReadBytes(address, sizeof(long)), 0);
         }
 
         public void WriteLong(IntPtr address, long value)
@@ -210,14 +210,73 @@ namespace MemSharp
             WriteBytes(address, BitConverter.GetBytes(value));
         }
 
-        public float ReadDouble(IntPtr address)
+        public double ReadDouble(IntPtr address)
         {
-            return BitConverter.ToSingle(ReadBytes(address, sizeof(double)), 0);
+            return BitConverter.ToDouble(ReadBytes(address, sizeof(double)), 0);
         }
 
         public void WriteDouble(IntPtr address, double value)
         {
             WriteBytes(address, BitConverter.GetBytes(value));
+        }
+
+        public uint ReadUInt(IntPtr address)
+        {
+            return BitConverter.ToUInt32(ReadBytes(address, sizeof(uint)), 0);
+        }
+
+        public void WriteUInt(IntPtr address, uint value)
+        {
+            WriteBytes(address, BitConverter.GetBytes(value));
+        }
+
+        public ulong ReadULong(IntPtr address)
+        {
+            return BitConverter.ToUInt64(ReadBytes(address, sizeof(ulong)), 0);
+        }
+
+        public void WriteULong(IntPtr address, ulong value)
+        {
+            WriteBytes(address, BitConverter.GetBytes(value));
+        }
+
+        public ushort ReadUShort(IntPtr address)
+        {
+            return BitConverter.ToUInt16(ReadBytes(address, sizeof(ushort)), 0);
+        }
+
+        public void WriteUShort(IntPtr address, ushort value)
+        {
+            WriteBytes(address, BitConverter.GetBytes(value));
+        }
+
+        public byte ReadByte(IntPtr address)
+        {
+            return ReadByte(address);
+        }
+
+        public void WriteByte(IntPtr address, byte value)
+        {
+            WriteBytes(address, BitConverter.GetBytes(value));
+        }
+
+        public string ReadString(IntPtr address, int length)
+        {
+            return Encoding.UTF8.GetString(ReadBytes(address, length));
+        }
+
+        public void WriteString(IntPtr address, string value, int length)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(value.Substring(0, length));
+
+            WriteBytes(address, bytes);
+        }
+
+        public void WriteString(IntPtr address, string value, int length, Encoding encoding)
+        {
+            byte[] bytes = encoding.GetBytes(value.Substring(0, length));
+
+            WriteBytes(address, bytes);
         }
     }
 }
