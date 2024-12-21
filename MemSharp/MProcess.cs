@@ -71,7 +71,14 @@ namespace MemSharp
                 name = name.Substring(0, name.Length - 4);
             }
 
-            process = Process.GetProcessesByName(name).First();
+            var processes = Process.GetProcessesByName(name);
+
+            if (processes.Length == 0)
+            {
+                throw new Exception($"Process {name} not found.");
+            }
+
+            process = processes.First();
         }
 
         public bool IsOpen()
@@ -252,7 +259,7 @@ namespace MemSharp
 
         public byte ReadByte(IntPtr address)
         {
-            return ReadByte(address);
+            return ReadBytes(address, sizeof(byte))[0];
         }
 
         public void WriteByte(IntPtr address, byte value)
@@ -267,7 +274,7 @@ namespace MemSharp
 
         public void WriteString(IntPtr address, string value, int length)
         {
-            byte[] bytes = Encoding.UTF8.GetBytes(value.Substring(0, length));
+            byte[] bytes = Encoding.UTF8.GetBytes(value.PadRight(length).Substring(0, length));
 
             WriteBytes(address, bytes);
         }
